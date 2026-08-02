@@ -35,3 +35,28 @@ export function validateSignUpStep(
       return undefined;
   }
 }
+
+/**
+ * Validasi langkah reset password (wizard forgot-password). Satu field per
+ * langkah: email / OTP / password-baru.
+ */
+export function validateResetStep(
+  step: number,
+  value: string,
+  password: string,
+): string | undefined {
+  switch (step) {
+    case 1:
+      if (!value.trim()) return "Email is required";
+      return EMAIL_RE.test(value) ? undefined : "Enter a valid email address";
+    case 2:
+      return /^\d{6}$/.test(value) ? undefined : "Enter the 6-digit code";
+    case 3:
+      if (value.length < 8) return "Password must be at least 8 characters";
+      return /[A-Za-z]/.test(value) && /\d/.test(value)
+        ? undefined
+        : "Password must contain letters and numbers";
+    default:
+      return undefined;
+  }
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "tahap": 1,
+    "title": "Enter your email",
+    "description": "We'll send a 6-digit code to reset your password",
+    "placeholder": "e.g. johndoe@gmail.com",
+    "type": "email"
+  },
+  {
+    "tahap": 2,
+    "title": "Verify the code",
+    "description": "We've sent a 6-digit code to your email. Enter it below to continue.",
+    "placeholder": "Enter the 6-digit code",
+    "type": "text"
+  },
+  {
+    "tahap": 3,
+    "title": "Create a new password",
+    "description": "Use 8+ characters with letters and numbers",
+    "placeholder": "Enter your new password",
+    "type": "password"
+  }
+]
