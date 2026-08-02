@@ -1,6 +1,7 @@
 import Text from "@/components/ui/Text";
 import { useTheme } from "@/hooks/use-theme";
-import { useAppDispatch } from "@/store/hooks";
+import { setLoading } from "@/slice/authSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createAuthService } from "@/services/authService";
 import type { AuthService } from "@/services/authService";
 import { Column, Host, Row, Spacer } from "@expo/ui";
@@ -9,22 +10,29 @@ import { fillMaxWidth, height } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, useNavigation, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { validateSignUpStep } from "@/utils/validation";
-import { submitOtp, submitSignup } from "./signupFlow";
+import { sendSignupOtp, submitOtp, submitSignup } from "./signupFlow";
 import steps from "./SignUpItemsScreens.json";
 import StepField from "./StepField";
 
 const defaultService = createAuthService();
+
+/** Tahap (attribut `tahap` di SignUpItemsScreens.json) — hindari magic index. */
+const TAHAP = { NAME: 1, EMAIL: 2, PASSWORD: 3, CONFIRM: 4, OTP: 5 } as const;
+
+/** Index array dari tahap OTP (baris ke-5 di JSON). */
+const OTP_STEP_INDEX = steps.findIndex((s) => s.tahap === TAHAP.OTP);
 
 export default function SignUpScreen({
   service = defaultService,
 }: { service?: AuthService } = {}) {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { isLoading } = useAppSelector((state) => state.auth);
   const theme = useTheme();
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<number, string | undefined>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
 
   const step = steps[stepIndex];
   const isLast = stepIndex === steps.length - 1;
@@ -33,63 +41,85 @@ export default function SignUpScreen({
     setErrors((prev) => ({ ...prev, [step.tahap]: undefined }));
   };
 
-  const handleClick = async () => {
-    // Step 5 (OTP): verifikasi kode → session aktif → auto-login ke tabs.
-    if (step.tahap === 5) {
-      const code = values[5] ?? "";
-      const codeError = validateSignUpStep(5, code, "");
-      if (codeError) {
-        setErrors((prev) => ({ ...prev, [5]: codeError }));
-        return;
-      }
-      setIsSubmitting(true);
-      const result = await submitOtp(
-        service,
-        values[2]?.trim() ?? "",
-        code,
-        dispatch,
-        (href) => router.replace(href),
-      );
-      setIsSubmitting(false);
-      if (result.error) {
-        setErrors((prev) => ({ ...prev, [5]: result.error ?? undefined }));
-      }
+  const user = {
+    name: values[TAHAP.NAME]?.trim() ?? "",
+    email: values[TAHAP.EMAIL]?.trim() ?? "",
+    password: values[TAHAP.PASSWORD] ?? "",
+  };
+
+  // Step 5 (OTP): verifikasi kode → auto-login.
+  const handleOtp = async () => {
+    const code = values[TAHAP.OTP] ?? "";
+    const codeError = validateSignUpStep(TAHAP.OTP, code, "");
+    if (codeError) {
+      setErrors((prev) => ({ ...prev, [TAHAP.OTP]: codeError }));
       return;
     }
+    await submitOtp(service, user.email, code, dispatch, (href) =>
+      router.replace(href),
+    );
+  };
 
-    // Step 4 (Create Account): daftar akun, berhasil → kirim OTP → lanjut step OTP.
-    if (step.tahap === 4) {
-      const error = validateSignUpStep(4, values[4] ?? "", values[3] ?? "");
-      if (error) {
-        setErrors((prev) => ({ ...prev, [4]: error }));
-        return;
-      }
-      setIsSubmitting(true);
-      const result = await submitSignup(service, {
-        name: values[1]?.trim() ?? "",
-        email: values[2]?.trim() ?? "",
-        password: values[3] ?? "",
-      });
-      setIsSubmitting(false);
-      if (result.error) {
-        setErrors((prev) => ({ ...prev, [4]: result.error ?? undefined }));
-        return;
-      }
-      setStepIndex(4); // tahap 5 = verifikasi email (OTP)
-      return;
-    }
-
+  // Step 4 (Create Account): signup SATU KALI, lalu kirim OTP. Kalau sendOtp
+  // gagal, user bisa "resend" di step 5 — bukan stuck (akun tidak dibuat ulang).
+  const handleCreate = async () => {
     const error = validateSignUpStep(
-      step.tahap,
-      values[step.tahap] ?? "",
-      values[3] ?? "",
+      TAHAP.CONFIRM,
+      values[TAHAP.CONFIRM] ?? "",
+      user.password,
     );
     if (error) {
-      setErrors((prev) => ({ ...prev, [step.tahap]: error }));
+      setErrors((prev) => ({ ...prev, [TAHAP.CONFIRM]: error }));
       return;
     }
-    if (isLast) router.push("/(tabs)/home");
-    else setStepIndex(stepIndex + 1);
+
+    dispatch(setLoading(true));
+    try {
+      if (!accountCreated) {
+        const signup = await submitSignup(service, user);
+        if (signup.error) {
+          setErrors((prev) => ({ ...prev, [TAHAP.CONFIRM]: signup.error ?? undefined }));
+          return;
+        }
+        setAccountCreated(true);
+      }
+      const otp = await sendSignupOtp(service, user.email);
+      setErrors((prev) => ({ ...prev, [TAHAP.OTP]: otp.error ?? undefined }));
+      setStepIndex(OTP_STEP_INDEX);
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const resendOtp = async () => {
+    setErrors((prev) => ({ ...prev, [TAHAP.OTP]: undefined }));
+    dispatch(setLoading(true));
+    try {
+      const otp = await sendSignupOtp(service, user.email);
+      if (otp.error) {
+        setErrors((prev) => ({ ...prev, [TAHAP.OTP]: otp.error ?? undefined }));
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const handleClick = () => {
+    if (step.tahap === TAHAP.OTP) void handleOtp();
+    else if (step.tahap === TAHAP.CONFIRM) void handleCreate();
+    else {
+      const error = validateSignUpStep(
+        step.tahap,
+        values[step.tahap] ?? "",
+        user.password,
+      );
+      if (error) {
+        setErrors((prev) => ({ ...prev, [step.tahap]: error }));
+        return;
+      }
+      if (isLast) router.push("/(tabs)/home");
+      else setStepIndex(stepIndex + 1);
+    }
   };
 
   const navigation = useNavigation();
@@ -100,6 +130,14 @@ export default function SignUpScreen({
       setStepIndex((i) => i - 1);
     });
   }, [navigation, stepIndex]);
+
+  const buttonLabel = isLoading
+    ? "..."
+    : step.tahap === TAHAP.OTP
+      ? "Verify Code"
+      : step.tahap === TAHAP.CONFIRM
+        ? "Create Account"
+        : "Continue";
 
   return (
     <Host useViewportSizeMeasurement style={{ flex: 1 }}>
@@ -141,7 +179,7 @@ export default function SignUpScreen({
           <Button
             modifiers={[fillMaxWidth(), height(48)]}
             onClick={handleClick}
-            enabled={!isSubmitting}
+            enabled={!isLoading}
             colors={{ containerColor: theme.primary }}
           >
             <Text
@@ -149,9 +187,19 @@ export default function SignUpScreen({
               color={theme.labels.primary}
               weight="semibold"
             >
-              {isSubmitting ? "..." : isLast ? "Verify Code" : step.tahap === 4 ? "Create Account" : "Continue"}
+              {buttonLabel}
             </Text>
           </Button>
+          {step.tahap === TAHAP.OTP ? (
+            <Text
+              variant="body"
+              weight="regular"
+              color={theme.accents.blue}
+              onPress={resendOtp}
+            >
+              {isLoading ? "Sending..." : "Didn't get a code? Resend"}
+            </Text>
+          ) : null}
           <Row spacing={4}>
             <Text variant="body" weight="regular" color={theme.textSecondary}>
               Already have an account?

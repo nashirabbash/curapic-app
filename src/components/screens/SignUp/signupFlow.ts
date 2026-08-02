@@ -4,8 +4,9 @@ import type { AppDispatch } from '@/store';
 import { HOME_ROUTE } from '../Login/routes';
 
 /**
- * Alur daftar akun: signup (simpan nama di metadata) lalu kirim OTP 6 digit.
- * Return { error } — komponen menampilkannya di tahap berjalan.
+ * Daftar akun satu kali (nama disimpan ke metadata Supabase). Kegagalan di
+ * sini = akun belum dibuat → aman diulang. Kirim OTP dipisah (sendSignupOtp)
+ * karena bisa di-resend, tidak boleh jadi satu transaksi dengan signup.
  */
 export async function submitSignup(
   service: AuthService,
@@ -16,12 +17,19 @@ export async function submitSignup(
     user.password,
     user.name,
   );
-  if (signup.error) return { error: signup.error };
+  return { error: signup.error };
+}
 
-  const otp = await service.sendOtp(user.email);
-  if (otp.error) return { error: otp.error };
-
-  return { error: null };
+/**
+ * Kirim OTP 6 digit. Idempoten — aman dipanggil berulang (resend),
+ * tidak membuat akun lagi.
+ */
+export async function sendSignupOtp(
+  service: AuthService,
+  email: string,
+): Promise<{ error: string | null }> {
+  const otp = await service.sendOtp(email);
+  return { error: otp.error };
 }
 
 /**

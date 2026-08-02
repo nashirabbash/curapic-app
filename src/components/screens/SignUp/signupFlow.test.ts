@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
-import { submitSignup, submitOtp } from './signupFlow';
+import { submitSignup, submitOtp, sendSignupOtp } from './signupFlow';
 import authReducer from '@/slice/authSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import type { AuthService } from '@/services/authService';
@@ -10,37 +10,42 @@ const user = { name: 'John Doe', email: 'a@b.c', password: 'secret123' };
 
 describe('submitSignup', () => {
   let signup: ReturnType<typeof mock>;
-  let sendOtp: ReturnType<typeof mock>;
   let service: AuthService;
 
   beforeEach(() => {
     signup = mock(async () => ({ data: {}, error: null }));
-    sendOtp = mock(async () => ({ data: {}, error: null }));
-    service = {
-      signupWithEmail: signup,
-      sendOtp: sendOtp,
-    } as unknown as AuthService;
+    service = { signupWithEmail: signup } as unknown as AuthService;
   });
 
-  it('sukses: signup (dengan nama) lalu kirim OTP, tanpa error', async () => {
+  it('sukses: signup (dengan nama), tanpa error', async () => {
     const result = await submitSignup(service, user);
     expect(signup).toHaveBeenCalledWith('a@b.c', 'secret123', 'John Doe');
-    expect(sendOtp).toHaveBeenCalledWith('a@b.c');
     expect(result).toEqual({ error: null });
   });
 
-  it('signup gagal (email terpakai): error kembali, OTP tidak dikirim', async () => {
+  it('signup gagal (email terpakai): error kembali', async () => {
     signup.mockResolvedValue({ data: null, error: 'User already registered' });
     const result = await submitSignup(service, user);
     expect(signup).toHaveBeenCalled();
-    expect(sendOtp).not.toHaveBeenCalled();
     expect(result).toEqual({ error: 'User already registered' });
   });
+});
 
-  it('sendOtp gagal: error kembali', async () => {
-    sendOtp.mockResolvedValue({ data: null, error: 'Failed to send code' });
-    const result = await submitSignup(service, user);
-    expect(result).toEqual({ error: 'Failed to send code' });
+describe('sendSignupOtp', () => {
+  let service: AuthService;
+
+  it('kirim OTP ke email idempoten (tidak buat akun)', async () => {
+    const sendOtp = mock(async () => ({ data: {}, error: null }));
+    service = { sendOtp } as unknown as AuthService;
+    expect(await sendSignupOtp(service, 'a@b.c')).toEqual({ error: null });
+    expect(sendOtp).toHaveBeenCalledWith('a@b.c');
+  });
+
+  it('sendOtp gagal → error kembali', async () => {
+    service = {
+      sendOtp: mock(async () => ({ data: null, error: 'Rate limited' })),
+    } as unknown as AuthService;
+    expect(await sendSignupOtp(service, 'a@b.c')).toEqual({ error: 'Rate limited' });
   });
 });
 
