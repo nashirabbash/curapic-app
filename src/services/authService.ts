@@ -70,7 +70,7 @@ export type AuthService = ReturnType<typeof createAuthService>;
 
 /**
  * Pasang listener global: session berubah → dispatch ke redux.
- * Dipanggil sekali saat app start (root layout).
+ * Akan dipanggil sekali di root layout pada ticket session/guard (#3).
  */
 export function attachAuthListener(service: AuthService, dispatch: AppDispatch) {
   return service.onAuthStateChange((event, session) => {
