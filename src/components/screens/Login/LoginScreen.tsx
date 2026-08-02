@@ -1,8 +1,12 @@
 import Text from "@/components/ui/Text";
 import TextField from "@/components/ui/TextField";
 import { useTheme } from "@/hooks/use-theme";
-import { loginSuccess, setLoading } from "@/slice/authSlice";
+import { loginFailure } from "@/slice/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { createAuthService } from "@/services/authService";
+import type { AuthService } from "@/services/authService";
+import { submitLogin } from "./submitLogin";
+import { HOME_ROUTE } from "./routes";
 import {
   Column,
   Host,
@@ -22,17 +26,21 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { validateLogin } from "@/utils/validation";
 
-export default function LoginScreen() {
+const defaultService = createAuthService();
+
+export default function LoginScreen({
+  service = defaultService,
+}: { service?: AuthService } = {}) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { user, isLoading } = useAppSelector((state) => state.auth);
+  const { user, isLoading, error } = useAppSelector((state) => state.auth);
   const theme = useTheme();
 
   // Session sudah pulih dari secure storage (mis. restart app setelah login)
   // → langsung ke tabs, jangan tampilkan login wall.
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/(tabs)/home");
+      router.replace(HOME_ROUTE);
     }
   }, [isLoading, user, router]);
 
@@ -46,27 +54,23 @@ export default function LoginScreen() {
     const validationErrors = validateLogin(email.value, password.value);
     setErrors(validationErrors);
     if (validationErrors.email || validationErrors.password) return;
-    dispatch(setLoading(true));
-    // Simulate API call
-    setTimeout(() => {
-      dispatch(
-        loginSuccess({ user: { email: email.value }, token: "mock-token-123" }),
-      );
-      router.push("/(tabs)/home");
-    }, 1000);
+    void submitLogin(
+      service,
+      { email: email.value, password: password.value },
+      dispatch,
+      (href) => router.replace(href),
+    );
   };
 
-  const handleGoogleLogin = () => {
-    dispatch(setLoading(true));
-    // Simulate API call
-    setTimeout(() => {
-      dispatch(
-        loginSuccess({
-          user: { email: "googleuser@example.com" },
-          token: "mock-google-token",
-        }),
-      );
-    }, 1000);
+  const handleGoogleLogin = async () => {
+    // OAuth: browser terbuka sendiri; promise resolve saat browser buka, bukan
+    // saat flow selesai. Tanpa isLoading global — user cancel OAuth tidak akan
+    // pernah "selesai" dan isLoading akan stuck selamanya.
+    const result = await service.googleLogin();
+    if (result.error) {
+      dispatch(loginFailure(result.error));
+    }
+    // Sukses: browser OAuth terbuka → event SIGNED_IN dari listener set session.
   };
 
   return (
@@ -111,6 +115,11 @@ export default function LoginScreen() {
                 setErrors((e) => ({ ...e, password: undefined }))
               }
             />
+            {error ? (
+              <Text variant="body" weight="regular" color={theme.accents.red}>
+                {error}
+              </Text>
+            ) : null}
           </Column>
         </Column>
         <Spacer flexible />
@@ -121,6 +130,7 @@ export default function LoginScreen() {
         >
           <Button
             modifiers={[fillMaxWidth(), height(48)]}
+            enabled={!isLoading}
             onClick={handleLogin}
             colors={{ containerColor: theme.primary }}
           >
@@ -130,7 +140,7 @@ export default function LoginScreen() {
               weight="semibold"
               color={theme.labels.primary}
             >
-              LOGIN
+              {isLoading ? "LOADING..." : "LOGIN"}
             </Text>
           </Button>
           <Text
@@ -142,7 +152,11 @@ export default function LoginScreen() {
           >
             OR
           </Text>
-          <OutlinedButton modifiers={[fillMaxWidth(), height(48)]}>
+          <OutlinedButton
+            modifiers={[fillMaxWidth(), height(48)]}
+            enabled={!isLoading}
+            onClick={handleGoogleLogin}
+          >
             <RNHostView matchContents>
               <Image
                 source={require("@/assets/images/Google_Icon.svg")}

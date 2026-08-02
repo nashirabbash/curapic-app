@@ -20,7 +20,10 @@ export function createAuthService(client: SupabaseClient = supabase) {
   return {
     /** Login email + password. */
     async loginEmailPassword(email: string, password: string) {
-      return toResult(await client.auth.signInWithPassword({ email, password }));
+      return toResult<{
+        user: { email?: string } | null;
+        session: { access_token: string } | null;
+      }>(await client.auth.signInWithPassword({ email, password }));
     },
 
     /** Daftar akun baru (belum terverifikasi). */
