@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { supabaseStorage } from './sessionStorage';
 
 /**
  * Factory client Supabase. Gagal jelas kalau env belum di-set — dipisah
@@ -17,6 +18,7 @@ export function createSupabaseClient(url: string | undefined, anonKey: string | 
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      storage: supabaseStorage,
     },
   });
 }
