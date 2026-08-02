@@ -9,15 +9,20 @@ import { Button, LinearProgressIndicator } from "@expo/ui/jetpack-compose";
 import { fillMaxWidth, height } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, useNavigation, useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { validateResetStep } from "@/utils/validation";
 import { requestResetOtp, submitNewPassword, verifyResetOtp } from "./resetFlow";
-import steps from "./ResetItemsScreens.json";
+import stepsRaw from "./ResetItemsScreens.json";
 import StepField from "../SignUp/StepField";
+import type { Step } from "../SignUp/StepField";
+import { useWizard } from "../shared/useWizard";
 
 const defaultService = createAuthService();
 
-/** Tahap reset — indices start dari 1 (JSON). hindari magic index. */
+// JSON tak menyimpan tipe literal utk `type` → annotate dengan union Step.
+const steps = stepsRaw as Step[];
+
+/** Tahap reset — index dimulai dari 1 (sesuai JSON), hindari magic index. */
 const RESET_STEP = { EMAIL: 1, OTP: 2, PASSWORD: 3 } as const;
 
 export default function ForgotPasswordScreen({
@@ -27,35 +32,31 @@ export default function ForgotPasswordScreen({
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
   const theme = useTheme();
-  const [stepIndex, setStepIndex] = useState(0);
-  const [values, setValues] = useState<Record<number, string>>({});
-  const [errors, setErrors] = useState<Record<number, string | undefined>>({});
+  const { stepIndex, setStepIndex, step, values, setValue, setError, errors } =
+    useWizard(steps);
   // Email dibaca di langkah OTP/password walau current step bukan email —
   // disimpan ref biar tak perlu re-render (nilai tak muncul di baris lain).
   const emailRef = useRef("");
 
-  const step = steps[stepIndex];
-  const getValue = (tahap: number) => values[tahap] ?? "";
+  const get = (tahap: number) => values[tahap] ?? "";
 
-  const setValue = (value: string) => {
-    setValues((prev) => ({ ...prev, [step.tahap]: value }));
+  const handleValueChange = (value: string) => {
+    setValue(value);
     if (step.tahap === RESET_STEP.EMAIL) emailRef.current = value.trim();
-    setErrors((prev) => ({ ...prev, [step.tahap]: undefined }));
   };
 
   /** Langkah 1: email → kirim OTP reset. */
   const handleEmail = async () => {
-    const error = validateResetStep(RESET_STEP.EMAIL, getValue(RESET_STEP.EMAIL), "");
+    const error = validateResetStep(RESET_STEP.EMAIL, get(RESET_STEP.EMAIL), "");
     if (error) {
-      setErrors((prev) => ({ ...prev, [RESET_STEP.EMAIL]: error }));
+      setError(RESET_STEP.EMAIL, error);
       return;
     }
-    const email = emailRef.current;
     dispatch(setLoading(true));
     try {
-      const otp = await requestResetOtp(service, email);
+      const otp = await requestResetOtp(service, emailRef.current);
       if (otp.error) {
-        setErrors((prev) => ({ ...prev, [RESET_STEP.EMAIL]: otp.error ?? undefined }));
+        setError(RESET_STEP.EMAIL, otp.error);
         return;
       }
       setStepIndex(1);
@@ -66,17 +67,17 @@ export default function ForgotPasswordScreen({
 
   /** Langkah 2: validasi OTP 6 digit → session reset aktif. */
   const handleOtp = async () => {
-    const error = validateResetStep(RESET_STEP.OTP, getValue(RESET_STEP.OTP), "");
+    const code = get(RESET_STEP.OTP);
+    const error = validateResetStep(RESET_STEP.OTP, code, "");
     if (error) {
-      setErrors((prev) => ({ ...prev, [RESET_STEP.OTP]: error }));
+      setError(RESET_STEP.OTP, error);
       return;
     }
-    const email = emailRef.current;
     dispatch(setLoading(true));
     try {
-      const verify = await verifyResetOtp(service, email, getValue(RESET_STEP.OTP));
+      const verify = await verifyResetOtp(service, emailRef.current, code);
       if (verify.error) {
-        setErrors((prev) => ({ ...prev, [RESET_STEP.OTP]: verify.error ?? undefined }));
+        setError(RESET_STEP.OTP, verify.error);
         return;
       }
       setStepIndex(2);
@@ -86,23 +87,34 @@ export default function ForgotPasswordScreen({
   };
 
   /** Langkah 3: set password baru → auto-login tabs. */
-  const handleNewPassword = () => {
-    const password = getValue(RESET_STEP.PASSWORD);
+  const handleNewPassword = async () => {
+    const password = get(RESET_STEP.PASSWORD);
     const error = validateResetStep(RESET_STEP.PASSWORD, password, "");
     if (error) {
-      setErrors((prev) => ({ ...prev, [RESET_STEP.PASSWORD]: error }));
+      setError(RESET_STEP.PASSWORD, error);
       return;
     }
-    void submitNewPassword(service, password, dispatch, (href) =>
-      router.replace(href as Href),
-      emailRef.current,
-    );
+    dispatch(setLoading(true));
+    try {
+      const result = await submitNewPassword(
+        service,
+        password,
+        dispatch,
+        (href) => router.replace(href as Href),
+        emailRef.current,
+      );
+      if (result.error) {
+        setError(RESET_STEP.PASSWORD, result.error);
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
   };
 
   const handleClick = () => {
     if (step.tahap === RESET_STEP.EMAIL) void handleEmail();
     else if (step.tahap === RESET_STEP.OTP) void handleOtp();
-    else handleNewPassword();
+    else void handleNewPassword();
   };
 
   const navigation = useNavigation();
@@ -112,7 +124,7 @@ export default function ForgotPasswordScreen({
       e.preventDefault();
       setStepIndex((i) => i - 1);
     });
-  }, [navigation, stepIndex]);
+  }, [navigation, stepIndex, setStepIndex]);
 
   let buttonLabel = "Continue";
   if (isLoading) buttonLabel = "...";
@@ -145,7 +157,7 @@ export default function ForgotPasswordScreen({
             key={step.tahap}
             step={step}
             initialValue={values[step.tahap] ?? ""}
-            onChange={setValue}
+            onChange={handleValueChange}
             errorMessage={errors[step.tahap]}
           />
         </Column>

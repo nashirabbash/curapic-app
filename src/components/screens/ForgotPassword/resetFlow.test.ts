@@ -73,12 +73,12 @@ describe('submitNewPassword', () => {
 
     expect(updatePassword).toHaveBeenCalledWith('newpass123');
     expect(replaced).toEqual([HOME_ROUTE]);
-    expect(s.getState().auth).toEqual({
-      user: { email: 'a@b.c' },
-      token: '',
-      isLoading: false,
-      error: null,
-    });
+    const st = s.getState().auth;
+    // Intent: pengguna aktif + tak loading. token diisi listener global sesi
+    // OTP (SIGNED_IN), jangan di-hardcode assert kosong di sini.
+    expect(st.user).toEqual({ email: 'a@b.c' });
+    expect(st.isLoading).toBe(false);
+    expect(st.error).toBeNull();
     expect(result).toEqual({ error: null });
   });
 

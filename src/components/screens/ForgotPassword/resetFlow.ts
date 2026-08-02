@@ -1,5 +1,5 @@
 import type { AuthService } from '@/services/authService';
-import { loginFailure, loginSuccess, setLoading } from '@/slice/authSlice';
+import { loginFailure, loginSuccess } from '@/slice/authSlice';
 import type { AppDispatch } from '@/store';
 import { HOME_ROUTE } from '../Login/routes';
 
@@ -40,7 +40,7 @@ export async function submitNewPassword(
   replace: (href: string) => void,
   email?: string,
 ): Promise<{ error: string | null }> {
-  dispatch(setLoading(true));
+  // setLoading dikelola oleh screen (handleNewPassword wrap try/finally).
   const result = await service.updatePassword(newPassword);
   if (result.error) {
     dispatch(loginFailure(result.error));
