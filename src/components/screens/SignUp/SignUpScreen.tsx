@@ -8,6 +8,7 @@ import { Column, Host, Row, Spacer } from "@expo/ui";
 import { Button, LinearProgressIndicator } from "@expo/ui/jetpack-compose";
 import { fillMaxWidth, height } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, useNavigation, useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { validateSignUpStep } from "@/utils/validation";
 import { sendSignupOtp, submitOtp, submitSignup } from "./signupFlow";
@@ -56,7 +57,7 @@ export default function SignUpScreen({
       return;
     }
     await submitOtp(service, user.email, code, dispatch, (href) =>
-      router.replace(href),
+      router.replace(href as Href),
     );
   };
 
@@ -130,13 +131,14 @@ export default function SignUpScreen({
     });
   }, [navigation, stepIndex]);
 
-  const buttonLabel = isLoading
-    ? "..."
-    : step.tahap === TAHAP.OTP
-      ? "Verify Code"
-      : step.tahap === TAHAP.CONFIRM
-        ? "Create Account"
-        : "Continue";
+  let buttonLabel = "Continue";
+  if (isLoading) {
+    buttonLabel = "...";
+  } else if (step.tahap === TAHAP.OTP) {
+    buttonLabel = "Verify Code";
+  } else if (step.tahap === TAHAP.CONFIRM) {
+    buttonLabel = "Create Account";
+  }
 
   return (
     <Host useViewportSizeMeasurement style={{ flex: 1 }}>
