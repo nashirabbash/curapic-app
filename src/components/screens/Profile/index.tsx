@@ -11,8 +11,15 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { useRouter } from "expo-router";
 
+import { useAppDispatch } from "@/store/hooks";
+import { createAuthService } from "@/services/authService";
+import { logoutFlow } from "./logoutFlow";
+
+const defaultService = createAuthService();
+
 export default function ProfileScreenLayout() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const theme = useTheme();
   const CHEVRON = Icon.select({
     ios: "chevron.right",
@@ -40,7 +47,12 @@ export default function ProfileScreenLayout() {
       id: "logout",
       label: "Log out",
       icon: Logout,
-      onPress: () => console.log("logout"),
+      // Nyalakan logout; hasil error ditampilkan via state auth (LoginScreen
+      // memakai error yg sama). Session dihapus dari storage oleh Supabase
+      // signOut (persistSession), AuthGate redirect ke login saat user null.
+      onPress: () => {
+        void logoutFlow(defaultService, dispatch);
+      },
     },
   ];
 
