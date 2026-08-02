@@ -8,7 +8,7 @@ import { Column, Host, Row, Spacer } from "@expo/ui";
 import { Button, LinearProgressIndicator } from "@expo/ui/jetpack-compose";
 import { fillMaxWidth, height } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, useNavigation, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { validateSignUpStep } from "@/utils/validation";
 import { sendSignupOtp, submitOtp, submitSignup } from "./signupFlow";
 import steps from "./SignUpItemsScreens.json";
@@ -32,7 +32,8 @@ export default function SignUpScreen({
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<number, string | undefined>>({});
-  const [accountCreated, setAccountCreated] = useState(false);
+  // Hanya dibaca/ditulis di handler — tak perlu menyebabkan re-render.
+  const accountCreatedRef = useRef(false);
 
   const step = steps[stepIndex];
   const setValue = (value: string) => {
@@ -74,13 +75,13 @@ export default function SignUpScreen({
 
     dispatch(setLoading(true));
     try {
-      if (!accountCreated) {
+      if (!accountCreatedRef.current) {
         const signup = await submitSignup(service, user);
         if (signup.error) {
           setErrors((prev) => ({ ...prev, [TAHAP.CONFIRM]: signup.error ?? undefined }));
           return;
         }
-        setAccountCreated(true);
+        accountCreatedRef.current = true;
       }
       const otp = await sendSignupOtp(service, user.email);
       setErrors((prev) => ({ ...prev, [TAHAP.OTP]: otp.error ?? undefined }));
