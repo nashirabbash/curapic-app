@@ -10,7 +10,9 @@ export interface AuthState {
 const initialState: AuthState = {
   user: null,
   token: null,
-  isLoading: false,
+  // Belum tahu apa-apa sebelum INITIAL_SESSION selesai restore dari storage.
+  // true di awal = jangan redirect ke login sebelum cek storage (anti flash).
+  isLoading: true,
   error: null,
 };
 
@@ -34,6 +36,7 @@ export const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.isLoading = false;
     },
   },
 });

@@ -1,6 +1,6 @@
 import type { AuthChangeEvent, AuthError, Session, SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { loginSuccess, logout } from '../slice/authSlice';
+import { loginSuccess, logout, setLoading } from '@/slice/authSlice';
 import type { AppDispatch } from '../store';
 
 export type AuthResult<T> = { data: T | null; error: string | null };
@@ -74,6 +74,7 @@ export type AuthService = ReturnType<typeof createAuthService>;
  */
 export function attachAuthListener(service: AuthService, dispatch: AppDispatch) {
   return service.onAuthStateChange((event, session) => {
+    dispatch(setLoading(false));
     if (event === 'SIGNED_OUT') {
       dispatch(logout());
       return;
