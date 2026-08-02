@@ -1,0 +1,3 @@
+# ADR-0001: Supabase sebagai backend auth + data
+
+Pilih Supabase (Postgres + Auth + Storage dalam satu layanan) dibanding Firebase atau backend sendiri (Express/JWT). Alasan: app butuh auth sekalian data per user (profil, riwayat scan, foto), dan Supabase kasih semua via satu SDK dengan Postgres SQL. Firebase pakai Firestore (NoSQL) + vendor lock; backend sendiri = user tanggung password hashing, token, security — di luar skala proyek portofolio ini. Konsekuensi: data tinggal di SQL, mudah dipindah ke backend sendiri kalau skala naik. Firebase dan backend sendiri ditolak karena Non.keputusan ini sulit dibalik (migrasi mahal) dan pertimbangannya real (ada alternatif nyata + alasan spesifik).

@@ -1,0 +1,37 @@
+[
+  {
+    "tahap": 1,
+    "title": "What's your full name?",
+    "description": "Enter your full name as it appears on your profile",
+    "placeholder": "e.g. John Doe",
+    "type": "text"
+  },
+  {
+    "tahap": 2,
+    "title": "What's your email address?",
+    "description": "We'll send a confirmation link to this address",
+    "placeholder": "e.g. johndoe@gmail.com",
+    "type": "email"
+  },
+  {
+    "tahap": 3,
+    "title": "Create a password",
+    "description": "Use 8+ characters with letters and numbers",
+    "placeholder": "Enter your password",
+    "type": "password"
+  },
+  {
+    "tahap": 4,
+    "title": "Confirm your password",
+    "description": "Enter the same password to make sure it matches",
+    "placeholder": "Confirm your password",
+    "type": "password"
+  },
+  {
+    "tahap": 5,
+    "title": "Verify your email",
+    "description": "We've sent a 6-digit code to your email. Please enter it below to verify your account.",
+    "placeholder": "Enter the 6-digit code",
+    "type": "text"
+  }
+]

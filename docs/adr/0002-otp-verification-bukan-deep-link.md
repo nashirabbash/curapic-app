@@ -1,0 +1,3 @@
+# ADR-0002: Autentikasi & reset via OTP, tanpa deep-link
+
+Semua alur verifikasi (signup baru, forgot-password) pakai kode OTP 6-digit via email — bukan email reset-link yang muka halaman web yang redirect balik ke app. Alasan: pola OTP sudah jadi dasar UI signup yang ada, semuanya terjadi di dalam appution (zero web hop, zero config redirect URL), dan buat portofolio cukup. Ini deliberate — berikutnya yang akan "perbaiki" ke alur link deep-link harus tahu kenapa tidak dipakai.

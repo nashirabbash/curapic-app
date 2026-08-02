@@ -1,0 +1,165 @@
+import Text from "@/components/ui/Text";
+import TextField from "@/components/ui/TextField";
+import { useTheme } from "@/hooks/use-theme";
+import { loginSuccess, setLoading } from "@/slice/authSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  Column,
+  Host,
+  Row,
+  ScrollView,
+  Spacer,
+  useNativeState,
+} from "@expo/ui";
+import { Button, OutlinedButton, RNHostView } from "@expo/ui/jetpack-compose";
+import {
+  fillMaxHeight,
+  fillMaxWidth,
+  height,
+} from "@expo/ui/jetpack-compose/modifiers";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { validateLogin } from "@/utils/validation";
+
+export default function LoginScreen() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { isLoading } = useAppSelector((state) => state.auth);
+  const theme = useTheme();
+
+  const email = useNativeState("");
+  const password = useNativeState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {},
+  );
+
+  const handleLogin = () => {
+    const validationErrors = validateLogin(email.value, password.value);
+    setErrors(validationErrors);
+    if (validationErrors.email || validationErrors.password) return;
+    dispatch(setLoading(true));
+    // Simulate API call
+    setTimeout(() => {
+      dispatch(
+        loginSuccess({ user: { email: email.value }, token: "mock-token-123" }),
+      );
+      router.push("/(tabs)/home");
+    }, 1000);
+  };
+
+  const handleGoogleLogin = () => {
+    dispatch(setLoading(true));
+    // Simulate API call
+    setTimeout(() => {
+      dispatch(
+        loginSuccess({
+          user: { email: "googleuser@example.com" },
+          token: "mock-google-token",
+        }),
+      );
+    }, 1000);
+  };
+
+  return (
+    <Host useViewportSizeMeasurement style={{ flex: 1 }}>
+      <ScrollView style={{ paddingHorizontal: 20 }}>
+        <Column style={{ paddingTop: 64 }} modifiers={[fillMaxHeight()]}>
+          <Column alignment="center" spacing={28}>
+            <Column alignment="start" spacing={8} modifiers={[fillMaxWidth()]}>
+              <Text
+                variant="title1"
+                weight="bold"
+                align="left"
+                color={theme.text}
+              >
+                Welcome Back!
+              </Text>
+              <Text
+                variant="subheadline"
+                align="left"
+                color={theme.textSecondary}
+              >
+                Please login to your account to continue.
+              </Text>
+            </Column>
+            <TextField
+              label="Email"
+              value={email}
+              placeholder="Enter your email"
+              placeholderTextColor={theme.textSecondary}
+              errorMessage={errors.email}
+              onChangeText={() => setErrors((e) => ({ ...e, email: undefined }))}
+            />
+            <TextField
+              label="Password"
+              value={password}
+              placeholder="Enter your password"
+              placeholderTextColor={theme.textSecondary}
+              isPassword
+              secureTextEntry
+              errorMessage={errors.password}
+              onChangeText={() =>
+                setErrors((e) => ({ ...e, password: undefined }))
+              }
+            />
+          </Column>
+        </Column>
+        <Spacer flexible />
+        <Column
+          spacing={16}
+          style={{ paddingBottom: 52, paddingTop: 16 }}
+          alignment="center"
+        >
+          <Button
+            modifiers={[fillMaxWidth(), height(48)]}
+            onClick={handleLogin}
+            colors={{ containerColor: theme.primary }}
+          >
+            <Text
+              variant="body"
+              textStyle={{ letterSpacing: 2 }}
+              weight="semibold"
+              color={theme.labels.primary}
+            >
+              LOGIN
+            </Text>
+          </Button>
+          <Text
+            variant="body"
+            weight="regular"
+            color={theme.textSecondary}
+            align="center"
+            modifiers={[fillMaxWidth()]}
+          >
+            OR
+          </Text>
+          <OutlinedButton modifiers={[fillMaxWidth(), height(48)]}>
+            <RNHostView matchContents>
+              <Image
+                source={require("@/assets/images/Google_Icon.svg")}
+                style={{ width: 24, height: 24 }}
+                contentFit="contain"
+              />
+            </RNHostView>
+            <Spacer size={8} />
+            <Text textStyle={{ letterSpacing: 2 }}>Google</Text>
+          </OutlinedButton>
+          <Row spacing={4}>
+            <Text variant="body" weight="regular" color={theme.textSecondary}>
+              Don&apos;t have an account?
+            </Text>
+            <Text
+              variant="body"
+              weight="semibold"
+              color={theme.accents.blue}
+              onPress={() => router.push("/(screens)/(auth)/SignUp")}
+            >
+              Sign Up
+            </Text>
+          </Row>
+        </Column>
+      </ScrollView>
+    </Host>
+  );
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "title": "Apa itu kurap?",
+    "desc": "Kurap adalah kondisi kulit yang ditandai dengan bintik-bintik merah dan gatal."
+  },
+  {
+    "id": "2",
+    "title": "Apa penyebab kurap?",
+    "desc": "Kurap disebabkan oleh infeksi jamur pada kulit."
+  },
+  {
+    "id": "3",
+    "title": "Bagaimana cara mencegah kurap?",
+    "desc": "Untuk mencegah kurap, hindari berbagi pakaian atau handuk dengan orang lain dan jaga kebersihan kulit."
+  },
+  {
+    "id": "4",
+    "title": "Bagaimana cara mengobati kurap?",
+    "desc": "Kurap dapat diobati dengan obat antijamur yang diresepkan oleh dokter."
+  }
+]
