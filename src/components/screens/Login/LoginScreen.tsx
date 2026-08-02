@@ -1,10 +1,11 @@
 import Text from "@/components/ui/Text";
 import TextField from "@/components/ui/TextField";
 import { useTheme } from "@/hooks/use-theme";
-import { loginFailure, loginSuccess, setLoading } from "@/slice/authSlice";
+import { loginFailure } from "@/slice/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createAuthService } from "@/services/authService";
 import type { AuthService } from "@/services/authService";
+import { submitLogin } from "./submitLogin";
 import {
   Column,
   Host,
@@ -48,33 +49,22 @@ export default function LoginScreen({
     {},
   );
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     const validationErrors = validateLogin(email.value, password.value);
     setErrors(validationErrors);
     if (validationErrors.email || validationErrors.password) return;
-
-    dispatch(setLoading(true));
-    const result = await service.loginEmailPassword(
-      email.value.trim(),
-      password.value,
+    void submitLogin(
+      service,
+      { email: email.value, password: password.value },
+      dispatch,
+      (href) => router.replace(href),
     );
-    if (result.error) {
-      dispatch(loginFailure(result.error));
-      return;
-    }
-    // Session juga di-set via onAuthStateChange (listener di root layout);
-    // dispatch manual supaya navigasi tidak menunggu event Supabase (race).
-    dispatch(
-      loginSuccess({
-        user: { email: result.data?.user?.email ?? email.value.trim() },
-        token: result.data?.session?.access_token ?? "",
-      }),
-    );
-    router.replace("/(tabs)/home");
   };
 
   const handleGoogleLogin = async () => {
-    dispatch(setLoading(true));
+    // OAuth: browser terbuka sendiri; promise resolve saat browser buka, bukan
+    // saat flow selesai. Tanpa isLoading global — user cancel OAuth tidak akan
+    // pernah "selesai" dan isLoading akan stuck selamanya.
     const result = await service.googleLogin();
     if (result.error) {
       dispatch(loginFailure(result.error));

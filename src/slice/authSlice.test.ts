@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import authReducer, { loginSuccess, loginFailure, logout, setLoading } from './authSlice';
+import authReducer, { loginSuccess, loginFailure, logout } from './authSlice';
 
 describe('authSlice', () => {
   it('loginSuccess: user+token terset, loading berhenti, error bersih', () => {
@@ -36,8 +36,8 @@ describe('authSlice', () => {
     expect(state).toEqual({ user: null, token: null, isLoading: false, error: null });
   });
 
-  it('initial state: isLoading true (belum restore session)', () => {
-    expect(authReducer(undefined, setLoading(true))).toEqual({
+  it('initial state: isLoading true (belum restore session, anti flash)', () => {
+    expect(authReducer(undefined, { type: 'unrelated' })).toEqual({
       user: null,
       token: null,
       isLoading: true,
