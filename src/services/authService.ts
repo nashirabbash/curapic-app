@@ -27,8 +27,18 @@ export function createAuthService(client: SupabaseClient = supabase) {
     },
 
     /** Daftar akun baru (belum terverifikasi). */
-    async signupWithEmail(email: string, password: string) {
-      return toResult(await client.auth.signUp({ email, password }));
+    async signupWithEmail(
+      email: string,
+      password: string,
+      name?: string,
+    ) {
+      return toResult(
+        await client.auth.signUp({
+          email,
+          password,
+          options: name ? { data: { name } } : undefined,
+        }),
+      );
     },
 
     /** Kirim kode OTP 6 digit ke email. */
@@ -38,7 +48,10 @@ export function createAuthService(client: SupabaseClient = supabase) {
 
     /** Verifikasi kode OTP. */
     async verifyOtp(email: string, token: string) {
-      return toResult(await client.auth.verifyOtp({ email, token, type: 'email' }));
+      return toResult<{
+        user: { email?: string } | null;
+        session: { access_token: string } | null;
+      }>(await client.auth.verifyOtp({ email, token, type: 'email' }));
     },
 
     /** Reset password via OTP (ADR-0002): kirim OTP, bukan reset-link. */

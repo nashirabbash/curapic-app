@@ -23,6 +23,7 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import type { Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { validateLogin } from "@/utils/validation";
 
@@ -58,7 +59,7 @@ export default function LoginScreen({
       service,
       { email: email.value, password: password.value },
       dispatch,
-      (href) => router.replace(href),
+      (href) => router.replace(href as Href),
     );
   };
 

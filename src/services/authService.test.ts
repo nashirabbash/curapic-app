@@ -49,6 +49,15 @@ describe('createAuthService', () => {
     expect(auth.signUp).toHaveBeenCalledWith({ email: 'a@b.c', password: 'secret' });
   });
 
+  it('signupWithEmail mengirim nama sebagai metadata bila diberikan', async () => {
+    await service.signupWithEmail('a@b.c', 'secret', 'John Doe');
+    expect(auth.signUp).toHaveBeenCalledWith({
+      email: 'a@b.c',
+      password: 'secret',
+      options: { data: { name: 'John Doe' } },
+    });
+  });
+
   it('sendOtp dan resetPassword memanggil signInWithOtp', async () => {
     await service.sendOtp('a@b.c');
     expect(auth.signInWithOtp).toHaveBeenCalledWith({ email: 'a@b.c' });
