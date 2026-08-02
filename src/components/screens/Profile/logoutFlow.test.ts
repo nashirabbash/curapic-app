@@ -1,11 +1,10 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, mock } from 'bun:test';
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '@/slice/authSlice';
 import type { AuthService } from '@/services/authService';
 import { logoutFlow } from './logoutFlow';
 
 describe('logoutFlow', () => {
-  beforeEach(() => {});
 
   it('sukses: panggil service.logout → session dibersihkan dari state', async () => {
     const logout = mock(async () => ({ data: null, error: null }));

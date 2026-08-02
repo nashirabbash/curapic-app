@@ -10,6 +10,7 @@ import {
   size,
 } from "@expo/ui/jetpack-compose/modifiers";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 
 import { useAppDispatch } from "@/store/hooks";
 import { createAuthService } from "@/services/authService";
@@ -17,10 +18,18 @@ import { logoutFlow } from "./logoutFlow";
 
 const defaultService = createAuthService();
 
+// Guard double-tap: logout in-flight dicek tiap onPress. Module-scope, bukan
+// state (tidak perlu re-render) & bukan ref (react-hooks/refs melarang baca
+// ref di render). Reset di finally handler.
+let logoutInFlight = false;
+
 export default function ProfileScreenLayout() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const theme = useTheme();
+  // Error tampil di layar ini (state lokal) — user tetap di Profile saat
+  // logout gagal, bukan terlempar ke login.
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const CHEVRON = Icon.select({
     ios: "chevron.right",
     android: require("@expo/material-symbols/chevron_right.xml"),
@@ -47,11 +56,20 @@ export default function ProfileScreenLayout() {
       id: "logout",
       label: "Log out",
       icon: Logout,
-      // Nyalakan logout; hasil error ditampilkan via state auth (LoginScreen
-      // memakai error yg sama). Session dihapus dari storage oleh Supabase
-      // signOut (persistSession), AuthGate redirect ke login saat user null.
+      // Session secure-storage dihapus oleh Supabase signOut (persistSession
+      // adapter); AuthGate redirect ke login saat user null.
       onPress: () => {
-        void logoutFlow(defaultService, dispatch);
+        if (logoutInFlight) return;
+        logoutInFlight = true;
+        setLogoutError(null);
+        void (async () => {
+          try {
+            const result = await logoutFlow(defaultService, dispatch);
+            if (result.error) setLogoutError(result.error);
+          } finally {
+            logoutInFlight = false;
+          }
+        })();
       },
     },
   ];
@@ -87,6 +105,11 @@ export default function ProfileScreenLayout() {
             ))}
           </FieldGroup.Section>
         </FieldGroup>
+        {logoutError ? (
+          <Text variant="footnote" color={theme.accents.red}>
+            {logoutError}
+          </Text>
+        ) : null}
       </Column>
     </Host>
   );
