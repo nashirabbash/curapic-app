@@ -19,14 +19,22 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { validateLogin } from "@/utils/validation";
 
 export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isLoading } = useAppSelector((state) => state.auth);
+  const { user, isLoading } = useAppSelector((state) => state.auth);
   const theme = useTheme();
+
+  // Session sudah pulih dari secure storage (mis. restart app setelah login)
+  // → langsung ke tabs, jangan tampilkan login wall.
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.replace("/(tabs)/home");
+    }
+  }, [isLoading, user, router]);
 
   const email = useNativeState("");
   const password = useNativeState("");

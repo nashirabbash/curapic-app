@@ -14,7 +14,7 @@ mock.module('expo-router', () => ({
   },
 }));
 
-const { AuthGate } = await import('./AuthGate');
+const { AuthGate, AUTH_ROUTE } = await import('./AuthGate');
 
 beforeEach(() => {
   redirectHref = null;
@@ -42,11 +42,28 @@ function json(renderer: ReturnType<typeof create>) {
 }
 
 describe('AuthGate', () => {
+  it('render kosong tanpa redirect selama session masih di-restore (isLoading)', () => {
+    // Initial state: isLoading=true (belum tahu session ada/tidak).
+    const { store, renderer } = renderGate('TABS-CONTENT');
+    expect(redirectHref).toBeNull();
+    expect(json(renderer)).toBeNull();
+
+    // Restore selesai tanpa session → baru redirect ke login.
+    act(() => {
+      store.dispatch(setLoading(false));
+    });
+    expect(redirectHref).toBe(AUTH_ROUTE);
+    expect(json(renderer)).toBeNull();
+  });
+
   it('redirect ke login saat tidak ada session, render tabs saat ada session', () => {
     const { store, renderer } = renderGate('TABS-CONTENT');
 
-    // No session → redirect ke auth group, tabs tidak dirender.
-    expect(redirectHref).toBe('/(screens)/(auth)/login');
+    // Restore selesai, tidak ada session → redirect ke auth group, tabs tak dirender.
+    act(() => {
+      store.dispatch(setLoading(false));
+    });
+    expect(redirectHref).toBe(AUTH_ROUTE);
     expect(json(renderer)).toBeNull();
 
     // Login sukses → tabs dirender, redirect tidak muncul lagi.
@@ -59,23 +76,7 @@ describe('AuthGate', () => {
     act(() => {
       store.dispatch(logout());
     });
-    expect(redirectHref).toBe('/(screens)/(auth)/login');
+    expect(redirectHref).toBe(AUTH_ROUTE);
     expect(json(renderer)).toBeNull();
-  });
-
-  it('render kosong saat session masih di-restore (isLoading)', () => {
-    const { store, renderer } = renderGate('TABS-CONTENT');
-    act(() => {
-      store.dispatch(setLoading(true));
-    });
-    // Tidak ada Redirect baru — nilai lama tidak berubah.
-    expect(json(renderer)).toBeNull();
-    expect(redirectHref).toBe('/(screens)/(auth)/login');
-
-    // Selesai restore tanpa session → baru redirect ke login.
-    act(() => {
-      store.dispatch(setLoading(false));
-    });
-    expect(redirectHref).toBe('/(screens)/(auth)/login');
   });
 });

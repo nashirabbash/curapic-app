@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { useAppSelector } from '@/store/hooks';
 
-const AUTH_ROUTE = '/(screens)/(auth)/login';
+export const AUTH_ROUTE = '/(screens)/(auth)/login';
 
 /**
  * Root guard: tanpa session → redirect ke login, session ada → render children

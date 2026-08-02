@@ -9,7 +9,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { AuthGate } from "@/components/template/AuthGate";
 import { store } from "@/store";
-import { setLoading } from "@/slice/authSlice";
 import { attachAuthListener, createAuthService } from "@/services/authService";
 import { Provider } from "react-redux";
 
@@ -24,9 +23,8 @@ export default function Layout() {
   // Listener global sekali saat app start: session dari secure storage
   // (INITIAL_SESSION) → redux; event login/logout/refresh → redux.
   useEffect(() => {
-    store.dispatch(setLoading(true));
     const sub = attachAuthListener(createAuthService(), store.dispatch);
-    return () => sub.data.subscription.unsubscribe();
+    return () => sub.data?.subscription.unsubscribe();
   }, []);
 
   return (
