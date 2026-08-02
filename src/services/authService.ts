@@ -1,5 +1,7 @@
-import { AuthError, Session, SupabaseClient } from '@supabase/supabase-js';
+import type { AuthChangeEvent, AuthError, Session, SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { loginSuccess, logout } from '../slice/authSlice';
+import type { AppDispatch } from '../store';
 
 export type AuthResult<T> = { data: T | null; error: string | null };
 
@@ -12,6 +14,8 @@ type SupaResponse = { data: unknown; error: AuthError | null };
 export function createAuthService(client: SupabaseClient = supabase) {
   const toResult = <T>(r: SupaResponse): AuthResult<T> =>
     r.error ? { data: null, error: r.error.message } : { data: r.data as T, error: null };
+
+  const sendOtpTo = async (email: string) => toResult(await client.auth.signInWithOtp({ email }));
 
   return {
     /** Login email + password. */
@@ -26,7 +30,7 @@ export function createAuthService(client: SupabaseClient = supabase) {
 
     /** Kirim kode OTP 6 digit ke email. */
     async sendOtp(email: string) {
-      return toResult(await client.auth.signInWithOtp({ email }));
+      return sendOtpTo(email);
     },
 
     /** Verifikasi kode OTP. */
@@ -36,7 +40,7 @@ export function createAuthService(client: SupabaseClient = supabase) {
 
     /** Reset password via OTP (ADR-0002): kirim OTP, bukan reset-link. */
     async resetPassword(email: string) {
-      return toResult(await client.auth.signInWithOtp({ email }));
+      return sendOtpTo(email);
     },
 
     /** Ganti password Pengguna yang sedang login. */
@@ -51,12 +55,13 @@ export function createAuthService(client: SupabaseClient = supabase) {
 
     /** Keluar dari session. */
     async logout() {
-      return toResult<null>(await client.auth.signOut() as unknown as SupaResponse);
+      const { error } = await client.auth.signOut();
+      return toResult<null>({ data: null, error });
     },
 
     /** Dengarkan perubahan state auth (login/logout/refresh). */
-    onAuthStateChange(cb: (session: Session | null) => void) {
-      return client.auth.onAuthStateChange((_event, session) => cb(session));
+    onAuthStateChange(cb: (event: AuthChangeEvent, session: Session | null) => void) {
+      return client.auth.onAuthStateChange((event, session) => cb(event, session));
     },
   };
 }
@@ -65,17 +70,18 @@ export type AuthService = ReturnType<typeof createAuthService>;
 
 /**
  * Pasang listener global: session berubah → dispatch ke redux.
- * Dipanggil sekali saat app start.
+ * Dipanggil sekali saat app start (root layout).
  */
-export function attachAuthListener(
-  service: AuthService,
-  dispatch: (action: { type: string; payload?: unknown }) => void,
-) {
-  return service.onAuthStateChange((session) => {
-    if (session?.user) {
-      dispatch({ type: 'auth/loginSuccess', payload: { user: { email: session.user.email }, token: session.access_token } });
+export function attachAuthListener(service: AuthService, dispatch: AppDispatch) {
+  return service.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      dispatch(logout());
+      return;
+    }
+    if (session?.user?.email) {
+      dispatch(loginSuccess({ user: { email: session.user.email }, token: session.access_token }));
     } else {
-      dispatch({ type: 'auth/logout' });
+      dispatch(logout());
     }
   });
 }

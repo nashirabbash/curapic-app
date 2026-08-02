@@ -82,19 +82,40 @@ describe('createAuthService', () => {
     expect(result).toEqual({ data: null, error: 'Invalid login credentials' });
   });
 
-  it('onAuthStateChange meneruskan session ke callback', async () => {
+  it('onAuthStateChange meneruskan event + session ke callback', async () => {
+    let receivedEvent: string | undefined;
     let received: Session | null | undefined;
     const session = { access_token: 'tok', user: { email: 'a@b.c' } } as unknown as Session;
     auth.onAuthStateChange.mockImplementation((cb: (e: string, s: Session | null) => void) => {
       cb('SIGNED_IN', session);
       return { data: { subscription: { unsubscribe: () => {} } } };
     });
-    service.onAuthStateChange((s) => (received = s));
+    service.onAuthStateChange((e, s) => {
+      receivedEvent = e;
+      received = s;
+    });
+    expect(receivedEvent).toBe('SIGNED_IN');
     expect(received).toBe(session);
   });
 });
 
 describe('attachAuthListener', () => {
+  it('dispatch logout saat event SIGNED_OUT, walau session masih ada', async () => {
+    const { auth, client } = makeFakeClient();
+    const service = createAuthService(client);
+    const dispatch = mock();
+    let emit: (e: string, s: Session | null) => void = () => {};
+    auth.onAuthStateChange.mockImplementation((cb: (e: string, s: Session | null) => void) => {
+      emit = (e, s) => cb(e, s);
+      return { data: { subscription: { unsubscribe: () => {} } } };
+    });
+
+    attachAuthListener(service, dispatch);
+
+    emit('SIGNED_OUT', { access_token: 'tok', user: { email: 'a@b.c' } } as unknown as Session);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'auth/logout' });
+  });
+
   it('dispatch loginSuccess saat session ada, logout saat null', async () => {
     const { auth, client } = makeFakeClient();
     const service = createAuthService(client);
