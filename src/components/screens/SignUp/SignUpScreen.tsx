@@ -35,7 +35,6 @@ export default function SignUpScreen({
   const [accountCreated, setAccountCreated] = useState(false);
 
   const step = steps[stepIndex];
-  const isLast = stepIndex === steps.length - 1;
   const setValue = (value: string) => {
     setValues((prev) => ({ ...prev, [step.tahap]: value }));
     setErrors((prev) => ({ ...prev, [step.tahap]: undefined }));
@@ -117,8 +116,7 @@ export default function SignUpScreen({
         setErrors((prev) => ({ ...prev, [step.tahap]: error }));
         return;
       }
-      if (isLast) router.push("/(tabs)/home");
-      else setStepIndex(stepIndex + 1);
+      setStepIndex(stepIndex + 1);
     }
   };
 
