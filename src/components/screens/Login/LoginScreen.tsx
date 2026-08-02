@@ -116,6 +116,16 @@ export default function LoginScreen({
                 setErrors((e) => ({ ...e, password: undefined }))
               }
             />
+            <Column alignment="end" modifiers={[fillMaxWidth()]}>
+              <Text
+                variant="subheadline"
+                weight="semibold"
+                color={theme.accents.blue}
+                onPress={() => router.push("/(screens)/(auth)/ForgotPassword")}
+              >
+                Forgot password?
+              </Text>
+            </Column>
             {error ? (
               <Text variant="body" weight="regular" color={theme.accents.red}>
                 {error}

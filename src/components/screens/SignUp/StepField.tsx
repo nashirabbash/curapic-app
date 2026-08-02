@@ -1,8 +1,16 @@
 import TextField from "@/components/ui/TextField";
 import { useNativeState } from "@expo/ui";
-import steps from "./SignUpItemsScreens.json";
 
-type Step = (typeof steps)[number];
+export type StepType = "text" | "email" | "password";
+/** Bentuk langkah wizard — sama untuk SignUp & ForgotPassword. */
+export type Step = {
+  tahap: number;
+  title: string;
+  description: string;
+  placeholder: string;
+  type: StepType;
+};
+
 const KEYBOARD_TYPE: Record<Step["type"], "email-address" | "default"> = {
   text: "default",
   email: "email-address",

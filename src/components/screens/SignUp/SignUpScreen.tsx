@@ -9,11 +9,17 @@ import { Button, LinearProgressIndicator } from "@expo/ui/jetpack-compose";
 import { fillMaxWidth, height } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, useNavigation, useRouter } from "expo-router";
 import type { Href } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { validateSignUpStep } from "@/utils/validation";
 import { sendSignupOtp, submitOtp, submitSignup } from "./signupFlow";
-import steps from "./SignUpItemsScreens.json";
+import stepsRaw from "./SignUpItemsScreens.json";
 import StepField from "./StepField";
+import type { Step } from "./StepField";
+import { useWizard } from "../shared/useWizard";
+
+// JSON tak menyimpan tipe literal utk `type` → annotate dengan union Step.
+// Nilai aktual dijamin `text|email|password` (di bawah kontrol JSON).
+const steps = stepsRaw as Step[];
 
 const defaultService = createAuthService();
 
@@ -30,17 +36,10 @@ export default function SignUpScreen({
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
   const theme = useTheme();
-  const [stepIndex, setStepIndex] = useState(0);
-  const [values, setValues] = useState<Record<number, string>>({});
-  const [errors, setErrors] = useState<Record<number, string | undefined>>({});
+  const { stepIndex, setStepIndex, step, values, setValue, setError, errors } =
+    useWizard(steps);
   // Hanya dibaca/ditulis di handler — tak perlu menyebabkan re-render.
   const accountCreatedRef = useRef(false);
-
-  const step = steps[stepIndex];
-  const setValue = (value: string) => {
-    setValues((prev) => ({ ...prev, [step.tahap]: value }));
-    setErrors((prev) => ({ ...prev, [step.tahap]: undefined }));
-  };
 
   const user = {
     name: values[TAHAP.NAME]?.trim() ?? "",
@@ -53,7 +52,7 @@ export default function SignUpScreen({
     const code = values[TAHAP.OTP] ?? "";
     const codeError = validateSignUpStep(TAHAP.OTP, code, "");
     if (codeError) {
-      setErrors((prev) => ({ ...prev, [TAHAP.OTP]: codeError }));
+      setError(TAHAP.OTP, codeError);
       return;
     }
     await submitOtp(service, user.email, code, dispatch, (href) =>
@@ -70,7 +69,7 @@ export default function SignUpScreen({
       user.password,
     );
     if (error) {
-      setErrors((prev) => ({ ...prev, [TAHAP.CONFIRM]: error }));
+      setError(TAHAP.CONFIRM, error);
       return;
     }
 
@@ -79,13 +78,13 @@ export default function SignUpScreen({
       if (!accountCreatedRef.current) {
         const signup = await submitSignup(service, user);
         if (signup.error) {
-          setErrors((prev) => ({ ...prev, [TAHAP.CONFIRM]: signup.error ?? undefined }));
+          setError(TAHAP.CONFIRM, signup.error);
           return;
         }
         accountCreatedRef.current = true;
       }
       const otp = await sendSignupOtp(service, user.email);
-      setErrors((prev) => ({ ...prev, [TAHAP.OTP]: otp.error ?? undefined }));
+      setError(TAHAP.OTP, otp.error);
       setStepIndex(OTP_STEP_INDEX);
     } finally {
       dispatch(setLoading(false));
@@ -93,12 +92,12 @@ export default function SignUpScreen({
   };
 
   const resendOtp = async () => {
-    setErrors((prev) => ({ ...prev, [TAHAP.OTP]: undefined }));
+    setError(TAHAP.OTP);
     dispatch(setLoading(true));
     try {
       const otp = await sendSignupOtp(service, user.email);
       if (otp.error) {
-        setErrors((prev) => ({ ...prev, [TAHAP.OTP]: otp.error ?? undefined }));
+        setError(TAHAP.OTP, otp.error);
       }
     } finally {
       dispatch(setLoading(false));
@@ -115,7 +114,7 @@ export default function SignUpScreen({
         user.password,
       );
       if (error) {
-        setErrors((prev) => ({ ...prev, [step.tahap]: error }));
+        setError(step.tahap, error);
         return;
       }
       setStepIndex(stepIndex + 1);
@@ -129,7 +128,7 @@ export default function SignUpScreen({
       e.preventDefault();
       setStepIndex((i) => i - 1);
     });
-  }, [navigation, stepIndex]);
+  }, [navigation, stepIndex, setStepIndex]);
 
   let buttonLabel = "Continue";
   if (isLoading) {
