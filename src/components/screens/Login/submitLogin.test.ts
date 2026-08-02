@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { submitLogin } from './submitLogin';
+import { HOME_ROUTE } from './routes';
 import authReducer from '@/slice/authSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import type { AuthService } from '@/services/authService';
@@ -31,7 +32,7 @@ describe('submitLogin', () => {
       'a@b.c',
       'secret',
     );
-    expect(replaced).toEqual(['/(tabs)/home']);
+    expect(replaced).toEqual([HOME_ROUTE]);
     expect(s.getState().auth).toEqual({
       user: { email: 'a@b.c' },
       token: 'tok-1',

@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createAuthService } from "@/services/authService";
 import type { AuthService } from "@/services/authService";
 import { submitLogin } from "./submitLogin";
+import { HOME_ROUTE } from "./routes";
 import {
   Column,
   Host,
@@ -39,7 +40,7 @@ export default function LoginScreen({
   // → langsung ke tabs, jangan tampilkan login wall.
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/(tabs)/home");
+      router.replace(HOME_ROUTE);
     }
   }, [isLoading, user, router]);
 

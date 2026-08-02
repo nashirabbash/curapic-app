@@ -1,6 +1,7 @@
 import type { AuthService } from '@/services/authService';
 import { loginFailure, loginSuccess, setLoading } from '@/slice/authSlice';
 import type { AppDispatch } from '@/store';
+import { HOME_ROUTE } from './routes';
 
 /**
  * Alur submit login email/password: panggil service → dispatch hasil ke redux
@@ -30,5 +31,5 @@ export async function submitLogin(
       token: result.data?.session?.access_token ?? '',
     }),
   );
-  replace('/(tabs)/home');
+  replace(HOME_ROUTE);
 }
